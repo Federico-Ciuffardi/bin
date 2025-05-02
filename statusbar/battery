@@ -10,7 +10,6 @@ case $BLOCK_BUTTON in
 ⚡: charged
 ❗: battery very low!
 - Text color reflects charge left" ;;
-    *) [ -z $BLOCK_BUTTON ] || exit 0 ;;
 esac
 
 for battery in /sys/class/power_supply/BAT? ; do
@@ -21,19 +20,27 @@ warn=" "
 
 msgTag="battery" # Arbitrary but unique message tag 
 
-
-if ! [ "$status" = "Charging" ] &&  [ "$capacity" -le 15 ] ; then
+if ! [ "$status" = "Charging" ] && ! [ "$status" = "Full" ] ; then
   if [ "$capacity" -le 5 ] ; then
     dunstify -r 180398 "Battery almost empty: $capacity%" -h int:value:"$capacity" --urgency=critical --appname=silent
     paplay /usr/share/sounds/freedesktop/stereo/suspend-error.oga &
   elif [ "$capacity" -le 10 ] ; then
     dunstify -r 180398 "Battery very low: $capacity%" -h int:value:"$capacity" --urgency=critical --appname=silent
     paplay /usr/share/sounds/freedesktop/stereo/dialog-warning.oga &
-  else
+  elif [ "$capacity" -le 20 ] ; then
     dunstify -r 180398 "Battery low: $capacity%" --urgency=critical --appname=silent
+  elif [ "$capacity" -le 40 ] ; then
+    dunstify -r 180398 "Battery at $capacity% plug to preserve battery" --urgency=critical --appname=silent
+  else
+    dunstify -C 180398
   fi
 else
-  dunstify -C 180398
+  print "hola"
+  if [ "$capacity" -ge 80 ] ; then
+    dunstify -r 180398 "⚠ Battery at $capacity% unplug to preserve battery life" --appname=silent
+  else
+    dunstify -C 180398
+  fi
 fi
 
 printf "%s%s%s\n" "$(echo "$status" | sed "s/,//;s/Discharging/🔋/;s/Not charging/🛑/;s/Charging/🔌/;s/Unknown/♻️/;s/Full/⚡/;s/ 0*/ /g;s/ :/ /g")" "$warn" "$(echo "$capacity" | sed -e 's/$/%/')"
