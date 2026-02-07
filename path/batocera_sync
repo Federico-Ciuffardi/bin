@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+rsync -avhz --info=progress2 --exclude={'dev','proc','sys','tmp','mnt','media','bin','lib','lib32','lib64','libexec','nohup.out','null','opt','root','run','sbin','usr','var'} -e ssh root@$1:/ ~/storage/backup/batocera
+
+
+# rsync -avhz --info=progress2 --exclude={'dev','proc','sys','tmp','mnt','media','bin','lib','lib32','lib64','libexec','nohup.out','null','opt','root','run','sbin','usr','var'} -e ssh root@`batocera_ip`:/ /home/fede/mounted/backup/batocera
+
+

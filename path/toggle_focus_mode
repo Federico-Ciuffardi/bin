@@ -1,0 +1,16 @@
+#!/bin/sh
+
+OUTPUT="HDMI-0"
+
+current=$(xrandr --verbose | awk -v out="$OUTPUT" '
+  $1 == out {p=1}
+  p && /Brightness:/ {print $2; exit}
+')
+
+if [ "$current" = "0.0" ] || [ "$current" = "0" ]; then
+    # Turn it back on
+    xrandr --output "$OUTPUT" --brightness 1
+else
+    # Turn it off (black)
+    xrandr --output "$OUTPUT" --brightness 0
+fi

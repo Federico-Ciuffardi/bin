@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+xrandr --output eDP-1 --mode 1920x1080 --rate 60 --output HDMI-0 --mode 1920x1080 --rotate inverted --output DP-1 --mode 1920x1080 --rotate inverted --left-of HDMI-0 &> /dev/null
+xrandr --output eDP-1 --mode 1920x1080 --rate 60 --output HDMI-0 --mode 1920x1080 --rotate normal --output DP-1 --mode 1920x1080 --rotate normal --left-of HDMI-0 &> /dev/null

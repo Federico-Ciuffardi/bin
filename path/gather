@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+cd ~/storage/projects/work/gather-desktop/
+npm start

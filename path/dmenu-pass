@@ -57,7 +57,7 @@ else
 
   # type password
   ([ "$mode" = autofill ] || [ "$mode" = password ]) && pass show "$password_file" | { IFS= read -r pass; printf %s "$pass"; } |
-    xdotool type --clearmodifiers --delay 100 --file -
+    xdotool type --clearmodifiers --delay 125 --file -
 
   # enter
   [ "$mode" = autofill ] && xdotool key --clearmodifiers KP_Enter 
