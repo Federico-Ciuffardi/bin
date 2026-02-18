@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
-cd ~/storage/projects/work/gather-desktop/
+cd ~/projects/personal/misc/gather-desktop
 npm start

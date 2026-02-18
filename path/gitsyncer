@@ -1,10 +1,10 @@
 #! /usr/bin/env bash
 
+set -o xtrace # Trace the execution of the script (debug)
+
 # Usage 'gitsyncer [directory where the local git repo will be or is located] [repo to sync]'
 
-function gitsync(){
-  pkg_name="$1"
-  cd $pkg_name
+function gitsync() {
   git-http2ssh
   git add .
   git commit -m "$(cat /etc/hostname)"
@@ -13,26 +13,21 @@ function gitsync(){
 }
 
 case $# in
-  1)
-    pkg_name="$1"
-    gitsync "$pkg_name"
-    ;;
-  2)
-    root=$1
-    repo=$2
-    pkg_name="`echo ${repo##*/} | cut -d'.' -f1`"
-    mkdir -p "$root"
-    cd "$root"
-    if [ -d "$pkg_name" ] ; then
-      gitsync "$pkg_name"
-    else
-      git clone $repo
-    fi
-    ;;
-  *)
-    echo "Wrong number of parameters"
-    exit 1
-    ;;
+2)
+  dir=$1
+  repo=$2
+  if [ -d "$dir" ]; then
+    cd "$dir"
+    gitsync
+  else
+    root="$(dirname "$dir")"
+    mkdir -p $root
+    cd $root
+    git clone $repo "$(basename "$dir")"
+  fi
+  ;;
+*)
+  echo "Wrong number of parameters"
+  exit 1
+  ;;
 esac
-
-

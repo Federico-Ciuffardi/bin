@@ -15,7 +15,7 @@
 
 # Example2: before age : `pwd`--old1-(file1,file2,file3)
 #                             |-(file5,folder1,file6)
-#                             
+#
 #           after  age : `pwd`--old1-(file1,file2,file3)
 #                             |-old2-(file5,folder1,file6)
 
@@ -28,43 +28,65 @@
 
 # * An option to fill the age gaps (possible when the user deleltes an old folder)
 
-set -o errexit      # Exit on most errors (see the manual)
-set -o nounset      # Disallow expansion of unset variables
-set -o pipefail     # Use last non-zero exit code in a pipeline
-set -o errtrace     # Ensure the error trap handler is inherited
+set -o errexit
+set -o nounset
+set -o pipefail
+set -o errtrace
 
-# echo "This will modify the files contained in $(pwd)"
-# printf "Are you sure?[y/N]:"
-# read awns
-# [ "$awns" = "y" ] || exit 0
+die=false
 
-filesToAge=$(ls | grep -Ev "^old([0-9])+" || true)
+# ---- flag parsing ----
+for arg in "$@"; do
+  case "$arg" in
+  -d | --die) die=true ;;
+  *)
+    echo "Unknown option: $arg" >&2
+    exit 1
+    ;;
+  esac
+done
 
-if [ -z "$filesToAge" ] ; then
-  echo "Nothing to age"
-  exit -1
+# ---- select files ----
+if $die; then
+  filesToAge=$(ls | grep -E '^old[0-9]+' || true)
+  prefix=".old"
+else
+  filesToAge=$(ls | grep -Ev '^old[0-9]+' || true)
+  prefix="old"
 fi
 
-currentAge=$(ls | grep -E "^old([0-9])+" | sed -E 's/old(0)*//g'  | tail -1 || true)
+if [ -z "$filesToAge" ]; then
+  echo "Nothing to age"
+  exit 0
+fi
 
-if [ -z $currentAge ] ; then
+# ---- compute next age ----
+currentAge=$(
+  ls | grep "^${prefix}" |
+    grep -E "^${prefix#\.}[0-9]+" |
+    sed -E "s/^${prefix#\.}0*//" |
+    sort -n |
+    tail -1 || true
+)
+
+if [ -z "$currentAge" ]; then
   newAge=1
 else
-  ((newAge=currentAge+1))
+  ((newAge = currentAge + 1))
 fi
 
-echo "Happy $newAge birthday"
+newAgeDir="${prefix}$(printf "%06d" "$newAge")"
 
-newAgeDir="old$(printf "%06d" "$newAge")"
+if $die; then
+  echo "Happy $newAge death"
+else
+  echo "Happy $newAge birthday"
+fi
 
+mkdir "$newAgeDir"
 
-mkdir $newAgeDir
-
-
+# ---- move ----
 OLD_IFS=$IFS
 IFS=$'\n'
-
-mv $filesToAge $newAgeDir
-
+mv $filesToAge "$newAgeDir"
 IFS=$OLD_IFS
-
