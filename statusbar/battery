@@ -34,13 +34,12 @@ if ! [ "$status" = "Charging" ] && ! [ "$status" = "Full" ] ; then
   else
     dunstify -C 180398
   fi
-else
-  print "hola"
-  if [ "$capacity" -ge 80 ] ; then
-    dunstify -r 180398 "⚠ Battery at $capacity% unplug to preserve battery life" --appname=silent
-  else
-    dunstify -C 180398
-  fi
+# else
+#   if [ "$capacity" -ge 80 ] ; then
+#     dunstify -r 180398 "⚠ Battery at $capacity% unplug to preserve battery life" --appname=silent
+#   else
+#     dunstify -C 180398
+#   fi
 fi
 
 printf "%s%s%s\n" "$(echo "$status" | sed "s/,//;s/Discharging/🔋/;s/Not charging/🛑/;s/Charging/🔌/;s/Unknown/♻️/;s/Full/⚡/;s/ 0*/ /g;s/ :/ /g")" "$warn" "$(echo "$capacity" | sed -e 's/$/%/')"
