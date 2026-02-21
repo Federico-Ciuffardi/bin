@@ -19,3 +19,4 @@ Ubuntu)
   nitrogen --set-tiled --head=2 $WALLPAPER_FILE
   ;;
 esac
+xrandr --dpi 96

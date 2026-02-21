@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+distro_name=$(lsb_release -i | sed 's/.*:\s*//g')
+picom --config ~/.config/picom/picom_${distro_name}.conf
