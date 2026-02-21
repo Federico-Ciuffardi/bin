@@ -1,4 +1,21 @@
 #!/usr/bin/env bash
 
-xrandr --output eDP-1 --mode 1920x1080 --rate 60 --output HDMI-0 --mode 1920x1080 --rotate inverted --output DP-1 --mode 1920x1080 --rotate inverted --left-of HDMI-0 &> /dev/null
-xrandr --output eDP-1 --mode 1920x1080 --rate 60 --output HDMI-0 --mode 1920x1080 --rotate normal --output DP-1 --mode 1920x1080 --rotate normal --left-of HDMI-0 &> /dev/null
+distro_name=$(lsb_release -i | sed 's/.*:\s*//g')
+case "$distro_name" in
+Arch)
+  function vsync { nvidia-settings --assign CurrentMetaMode="nvidia-auto-select +0+0 { ForceFullCompositionPipeline = $@ }"; }
+  [[ $(nvidia-settings -tq CurrentMetaMode | grep ForceFullCompositionPipeline=On) ]] && vsync Off || vsync On
+
+  xrandr --output eDP-1 --mode 1920x1080 --rate 60 --output HDMI-0 --rotate inverted --output DP-1 --mode 1920x1080 --rotate inverted --left-of HDMI-0 &>/dev/null
+  xrandr --output eDP-1 --mode 1920x1080 --rate 60 --output HDMI-0 --rotate normal --output DP-1 --mode 1920x1080 --rotate normal --left-of HDMI-0 &>/dev/null
+  brightctl 72000
+  nitrogen --set-tiled $WALLPAPER_FILE
+  ;;
+Ubuntu)
+  xrandr --output eDP-1-1 --mode 1680x1050 --rotate inverted --output DP-1-2-1 --mode 1920x1080 --rotate inverted --right-of eDP-1-1 --output DP-1-2-3 --mode 1920x1080 --rotate inverted --right-of DP-1-2-1
+  xrandr --output eDP-1-1 --mode 1680x1050 --rotate normal --output DP-1-2-1 --mode 1920x1080 --rotate normal --right-of eDP-1-1 --output DP-1-2-3 --mode 1920x1080 --rotate normal --right-of DP-1-2-1
+  nitrogen --set-tiled --head=0 $WALLPAPER_FILE
+  nitrogen --set-tiled --head=1 $WALLPAPER_FILE
+  nitrogen --set-tiled --head=2 $WALLPAPER_FILE
+  ;;
+esac
