@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DATE="$(date +%F)"
+
+BKP_01="/run/media/fede/bkp_01"
+
+ARCHIVE="/run/media/fede/archive/"
+
+BATOCERA_IP="$(batocera_ip | head -n1 | tr -d '\n\r')"
+[[ -n "$BATOCERA_IP" ]] || {
+  echo "ERROR: batocera_ip returned empty value"
+  exit 1
+}
+BATOCERA_REMOTE="root@$BATOCERA_IP"
+
+RSYNC=(rsync -aAXHv --info=progress2,stats --delete)
+
+LOG_FILE="/tmp/backup_${DATE}.log"
+
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+# -------------------
+# SAFETY CHECKS
+# -------------------
+for d in "$BKP_01" "$ARCHIVE"; do
+  mountpoint -q "$d" || { echo "ERROR: $d not mounted"; exit 1; }
+done
+
+# prevent concurrent runs
+exec 9>/tmp/backup.lock
+flock -n 9 || { echo "Another backup is running"; exit 1; }
+
+# -------------------
+# BACKUP TO BASE
+# -------------------
+
+ssh -o BatchMode=yes -o ConnectTimeout=5 "$BATOCERA_REMOTE" "true" >/dev/null \
+  || { echo "ERROR: cannot reach Batocera host"; exit 1; }
+echo "=== Batocera backup ==="
+"${RSYNC[@]}" \
+  --backup \
+  --backup-dir="$BKP_01/.backup/live/batocera/$DATE/userdata" \
+  "$BATOCERA_REMOTE:/userdata/" \
+  "$BKP_01/live/batocera/userdata/"
+
+echo "=== Docs backup ==="
+"${RSYNC[@]}" \
+  --backup \
+  --backup-dir="$BKP_01/.backup/live/docs/$DATE" \
+  "$HOME/docs/" \
+  "$BKP_01/live/docs/"
+
+echo "=== Archive backup ==="
+"${RSYNC[@]}" \
+  --backup \
+  --backup-dir="$BKP_01/.backup/archive/$DATE" \
+  "$ARCHIVE/" \
+  "$BKP_01/archive/"
+
+echo "Backup completed successfully: $DATE"
+
+for base in "$BKP_01" ; do
+  find "$base" \
+    -path "*/lost+found" -prune -o \
+    -type d \
+    -path "*/.backup/*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*" \
+    -mtime +100 -print \
+  | sed 's/^/Consider deleting (older than 100 days): /'
+done

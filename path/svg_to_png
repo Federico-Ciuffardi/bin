@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+input_dir="$1"
+output_dir="$2"
+
+cd "$input_dir"
+
+input_root_directory=$(echo "$input_dir" | cut -d "/" -f2)
+
+OIFS="$IFS"
+IFS=$'\n'
+for input_path in $(fd --type f | grep ".svg") ; do
+  output_path="../$output_dir/${input_path%.*}.png"
+  mkdir -p "$(dirname $output_path)"
+  echo "$input_path -> $output_path"
+  # inkscape "${input_path}" --export-area-drawing --export-png="${output_path}" --export-width=1000 &
+  inkscape "${input_path}" \
+    --export-area-drawing \
+    --export-filename="${output_path}" \
+    --export-height=900 \
+    --export-background-opacity=1
+  # inkscape "${input_path}" -b '#ffffff' --export-area-drawing --export-png="${output_path}" --export-dpi=200 &
+done
+IFS="$OIFS"
+
+wait

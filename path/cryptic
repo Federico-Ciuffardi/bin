@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+usage() {
+  echo "Usage:"
+  echo "  $0 -e|--encrypt <input_path>"
+  echo "  $0 -d|--decrypt <input_file.gpg>"
+  exit 1
+}
+
+if [ "$#" -lt 2 ]; then
+  usage
+fi
+
+MODE="$1"
+INPUT="$2"
+
+case "$MODE" in
+  -e|--encrypt)
+    BASENAME="$(basename "$INPUT")"
+    OUTPUT="${BASENAME}.tar.gz.gpg"
+
+    # Archive + compress + encrypt (streaming, no temp file)
+    tar -czf - "$INPUT" | gpg --symmetric --cipher-algo AES256 -o "$OUTPUT"
+
+    echo "Encrypted file created: $OUTPUT"
+    ;;
+
+  -d|--decrypt)
+    BASENAME="$(basename "$INPUT" .gpg)"
+    OUTPUT_DIR="${BASENAME%.tar.gz}"
+
+    mkdir -p "$OUTPUT_DIR"
+
+    # Decrypt + extract
+    gpg --decrypt "$INPUT" | tar -xzf - -C "$OUTPUT_DIR"
+
+    echo "Decrypted and extracted to: $OUTPUT_DIR"
+    ;;
+
+  *)
+    usage
+    ;;
+esac
