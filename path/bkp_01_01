@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+MAX_SNAPHOT_AGE=100
+
+##################
+# Enable logging #
+##################
+DATE="$(date +%F_%H-%M-%S)"
+LOG_FILE="/tmp/backup_${DATE}.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+echo "# Backup started at $DATE"
+
+################
+# Mount points #
+################
+ARCHIVE="/run/media/fede/archive"
+BKP_01_01="/mnt/bkp_01_01"
+BATOCERA_IP="$(batocera_ip 2>/dev/null | head -n1 | tr -d '\n\r')"
+[[ -n "$BATOCERA_IP" ]] || {
+    echo "ERROR: batocera_ip returned empty value"
+    exit 1
+}
+BATOCERA_REMOTE="root@$BATOCERA_IP"
+
+#############
+# Rsync cmd #
+#############
+DRY_RUN="${DRY_RUN:-false}"
+RSYNC=(rsync -aAXHv --info=progress2,stats --delete --numeric-ids --exclude='lost+found/' --exclude='.git/index' --exclude='.git/*/index')
+if [[ "$DRY_RUN" == "true" ]]; then
+    echo "DRY RUN MODE (no changes will be made)"
+    RSYNC+=(--dry-run)
+fi
+
+################
+# Safety check #
+################
+for d in "$BKP_01_01" "$BKP_01_01/.snapshots" "$ARCHIVE"; do
+    mountpoint -q "$d" || { echo "ERROR: $d not mounted"; exit 1; }
+done
+
+exec 9>/tmp/backup.lock
+flock -n 9 || { echo "Another backup is running"; exit 1; }
+
+ssh -o BatchMode=yes -o ConnectTimeout=5 "$BATOCERA_REMOTE" "true" >/dev/null 2>&1 \
+    || { echo "ERROR: cannot reach Batocera host ($BATOCERA_IP)"; exit 1; }
+
+##############
+# Rsync pull #
+##############
+echo "## Batocera backup"
+"${RSYNC[@]}" "$BATOCERA_REMOTE:/userdata/" "$BKP_01_01/batocera/"
+
+echo "## Docs backup"
+"${RSYNC[@]}" "$HOME/docs/" "$BKP_01_01/docs/"
+
+echo "## Archive backup"
+"${RSYNC[@]}" "$ARCHIVE/" "$BKP_01_01/archive/"
+
+############
+# SNAPSHOT #
+############
+echo "# Creating snapshot"
+SNAPSHOT_DIR="$BKP_01_01/.snapshots/$DATE"
+if [[ "$DRY_RUN" != "true" ]]; then
+    btrfs subvolume snapshot -r "$BKP_01_01" "$SNAPSHOT_DIR"
+    echo "Snapshot created: $SNAPSHOT_DIR"
+fi
+
+#######################
+# PRUNE OLD SNAPSHOTS #
+#######################
+if [[ "$DRY_RUN" != "true" ]]; then
+    echo "# Pruning snapshots older than $MAX_SNAPHOT_AGE days"
+    find "$BKP_01_01/.snapshots" \
+        -mindepth 1 -maxdepth 1 \
+        -type d \
+        -mtime +$MAX_SNAPHOT_AGE | while read -r snap; do
+        echo "Deleting old snapshot: $snap"
+        btrfs subvolume delete "$snap"
+    done
+fi
+
+################
+# Scrub        #
+################
+echo "# Scrubing"
+echo "## Scrubbing backup disk"
+btrfs scrub start -B "$BKP_01_01"
+echo "## Scrubbing system disk"
+btrfs scrub start -B /
+
+################
+# Disk health  #
+################
+echo "# Checking disk health"
+echo "## Local disks"
+check_disks_health || true
+echo "## Batocera disks"
+ssh "$BATOCERA_REMOTE" 'bash -s' < "$(which check_disks_health)" || true
+
+echo "Backup and checks completed: $DATE"

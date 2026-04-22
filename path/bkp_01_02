@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+##################
+# Enable logging #
+##################
+DATE="$(date +%F_%H-%M-%S)"
+LOG_FILE="/tmp/mirror_${DATE}.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+echo "# Mirror started at $DATE"
+
+################
+# Mount points #
+################
+BKP_01_01="/mnt/bkp_01_01"
+BKP_01_02="/run/media/fede/bkp_01_02"
+
+#############
+# Rsync cmd #
+#############
+DRY_RUN="${DRY_RUN:-false}"
+RSYNC=(rsync -aAXHv --info=progress2,stats --delete --numeric-ids)
+if [[ "$DRY_RUN" == "true" ]]; then
+    echo "DRY RUN MODE (no changes will be made)"
+    RSYNC+=(--dry-run)
+fi
+
+################
+# Safety check #
+################
+for d in "$BKP_01_01" "$BKP_01_01/.snapshots" "$BKP_01_02"; do
+    mountpoint -q "$d" || { echo "ERROR: $d not mounted"; exit 1; }
+done
+
+exec 9>/tmp/mirror.lock
+flock -n 9 || { echo "Another mirror is running"; exit 1; }
+
+##########
+# Mirror #
+##########
+echo "# Mirroring bkp_01_01 to bkp_01_02"
+"${RSYNC[@]}" "$BKP_01_01/" "$BKP_01_02/"
+
+##########
+# Scrub  #
+##########
+echo "# Scrubbing mirror disk"
+btrfs scrub start -B "$BKP_01_02"
+
+echo "Mirror completed: $DATE"
