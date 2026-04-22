@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+NOTIFY="${NOTIFY:-true}"
+SMART_BIN="${SMART_BIN:-smartctl}"
+
+run_smartctl() {
+  "$SMART_BIN" "$@"
+}
+
+notify() {
+  [[ "$NOTIFY" == "true" ]] || return 0
+  command -v dunstify >/dev/null 2>&1 || return 0
+
+  local level="$1"
+  local title="$2"
+  local msg="$3"
+
+  dunstify -u "$level" "$title" "$msg"
+}
+
+check_device() {
+  local dev="$1"
+  local type="$2"
+
+  echo "=== $dev ($type) ==="
+
+  local out rc=0 status="OK"
+  out=$(run_smartctl -a -d "$type" "$dev" 2>&1) || rc=$?
+
+  # If SMART tool failed completely
+  if [[ $rc -ne 0 ]]; then
+    status="WARNING"
+  fi
+
+  # Extract overall SMART health
+  if echo "$out" | grep -qi "FAILING\|FAILED"; then
+    status="CRITICAL"
+  elif echo "$out" | grep -qi "SMART overall-health self-assessment test result:.*PASSED"; then
+    :
+  fi
+
+  # Attribute extraction (safe regex-based parsing)
+  get_attr() {
+    echo "$out" | awk -v name="$1" '$0 ~ name {print $NF; exit}'
+  }
+
+  local reallocated pending offline media
+
+  reallocated=$(get_attr "Reallocated_Sector_Ct")
+  pending=$(get_attr "Current_Pending_Sector")
+  offline=$(get_attr "Offline_Uncorrectable")
+  media=$(get_attr "Media and Data Integrity Errors")
+
+  # Normalize values
+  reallocated=${reallocated:-0}
+  pending=${pending:-0}
+  offline=${offline:-0}
+  media=${media:-0}
+
+  # Ensure numeric safety
+  is_bad_value() {
+    [[ "${1:-0}" =~ ^[0-9]+$ ]] && [[ "$1" -gt 0 ]]
+  }
+
+  if is_bad_value "$reallocated" || \
+     is_bad_value "$pending" || \
+     is_bad_value "$offline" || \
+     is_bad_value "$media"; then
+    status="CRITICAL"
+  fi
+
+  echo ">>> STATUS: $status"
+
+  case "$status" in
+    CRITICAL)
+      notify critical "SMART CRITICAL" "$dev ($type)"
+      return 2
+      ;;
+    WARNING)
+      notify normal "SMART WARNING" "$dev ($type)"
+      return 1
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+}
+
+SMART_RESULT=0
+
+while read -r dev type _; do
+  [[ -n "${dev:-}" ]] || continue
+
+  # strip possible trailing comments from smartctl --scan
+  dev="${dev%%#*}"
+
+  check_device "$dev" "$type" || rc=$?
+
+  if [[ $rc -eq 2 ]]; then
+    SMART_RESULT=2
+  elif [[ $rc -eq 1 && $SMART_RESULT -lt 2 ]]; then
+    SMART_RESULT=1
+  fi
+done < <(run_smartctl --scan-open)
+
+echo
+if [[ $SMART_RESULT -eq 2 ]]; then
+  echo "RESULT: CRITICAL"
+  exit 2
+elif [[ $SMART_RESULT -eq 1 ]]; then
+  echo "RESULT: WARNING"
+  exit 1
+else
+  echo "RESULT: OK"
+  exit 0
+fi
