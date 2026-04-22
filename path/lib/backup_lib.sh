@@ -2,10 +2,19 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 
+setup_rsync() {
+    RSYNC=(rsync -aAXHv --info=progress2,stats --delete --numeric-ids --exclude='lost+found/' --exclude='.git/index' --exclude='.git/*/index')
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+        echo "DRY RUN MODE (no changes will be made)"
+        RSYNC+=(--dry-run)
+    fi
+}
+
 setup_logging() {
     local name="$1"
     local date="$2"
-    LOG_FILE="/tmp/${name}_${date}.log"
+    mkdir -p /var/log/bkp
+    LOG_FILE="/var/log/bkp/${name}_${date}.log"
     exec > >(tee -a "$LOG_FILE") 2>&1
     echo "# $name started at $date"
 }
@@ -17,11 +26,6 @@ check_mounts() {
 }
 
 setup_lock() {
-    local name="$1"
-    exec 9>"/tmp/${name}.lock"
-    flock -n 9 || { echo "Another $name is running"; exit 1; }
-}
-
-run_check_disks_health() {
-    "$SCRIPT_DIR/check_disks_health"
+    exec 9>"/tmp/bkp.lock"  # same lock file for all backup operations
+    flock -n 9 || { echo "Another backup/mirror operation is running"; exit 1; }
 }

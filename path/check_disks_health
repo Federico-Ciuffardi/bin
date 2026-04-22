@@ -2,8 +2,8 @@
 set -uo pipefail
 
 if [[ $EUID -ne 0 ]]; then
-    echo "Re-running with sudo..."
-    exec sudo "$0" "$@"
+    echo "Run with sudo..."
+    exit 1
 fi
 
 overall=0
