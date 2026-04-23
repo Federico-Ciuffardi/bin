@@ -22,7 +22,10 @@ setup_logging "bkp_01_02" "$DATE"
 # Mount points #
 ################
 BKP_01_01="/mnt/bkp_01_01"
+BKP_01_01_DATA="$BKP_01_01/@"
 BKP_01_02="/run/media/fede/bkp_01_02"
+BKP_01_02_DATA="$BKP_01_02/@"
+BKP_01_02_SNAPSHOT="$BKP_01_02/@.snapshots/"
 
 #############
 # Rsync cmd #
@@ -32,7 +35,7 @@ setup_rsync
 ################
 # Safety check #
 ################
-check_mounts "$BKP_01_01" "$BKP_01_01/.snapshots" "$BKP_01_02"
+check_mounts "$BKP_01_01" "$BKP_01_02"
 
 setup_lock
 
@@ -40,13 +43,23 @@ setup_lock
 # Mirror #
 ##########
 echo "# Mirroring bkp_01_01 to bkp_01_02"
-"${RSYNC[@]}" "$BKP_01_01/" "$BKP_01_02/"
+"${RSYNC[@]}" "$BKP_01_01_DATA/" "$BKP_01_02_DATA/"
+
+############
+# SNAPSHOT #
+############
+echo "# Creating snapshot"
+SNAPSHOT_DIR="$BKP_01_02_SNAPSHOT/$DATE"
+if [[ "$DRY_RUN" != "true" ]]; then
+    btrfs subvolume snapshot -r "$BKP_01_02_DATA/@" "$SNAPSHOT_DIR"
+    echo "Snapshot created: $SNAPSHOT_DIR"
+fi
 
 ##########
 # Scrub  #
 ##########
 echo "# Scrubbing mirror disk"
-btrfs scrub start -B "$BKP_01_02"
+btrfs scrub start -B "$BKP_01_02_DATA"
 
 ################
 # Disk health  #

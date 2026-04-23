@@ -24,6 +24,8 @@ setup_logging "bkp_01_01" "$DATE"
 # Mount points #
 ################
 BKP_01_01="/mnt/bkp_01_01"
+BKP_01_01_DATA="$BKP_01_01/@/"
+BKP_01_01_SNAPSHOTS="$BKP_01_01/@.snapshots/"
 ARCHIVE="/run/media/fede/archive"
 
 ###########
@@ -39,7 +41,7 @@ setup_rsync
 ################
 # Safety check #
 ################
-check_mounts "$BKP_01_01" "$BKP_01_01/.snapshots" "$ARCHIVE"
+check_mounts "$BKP_01_01" "$ARCHIVE"
 
 setup_lock
 
@@ -49,23 +51,23 @@ ssh -o BatchMode=yes -o ConnectTimeout=5 "$BATOCERA_REMOTE" "true" >/dev/null 2>
 ##############
 # Rsync pull #
 ##############
-mkdir -p $BKP_01_01/batocera
+mkdir -p $BKP_01_01_DATA/batocera
 echo "## Batocera backup"
-"${RSYNC[@]}" "$BATOCERA_REMOTE:/userdata/" "$BKP_01_01/batocera/userdata/"
+"${RSYNC[@]}" "$BATOCERA_REMOTE:/userdata/" "$BKP_01_01_DATA/batocera/userdata/"
 
 echo "## Docs backup"
-"${RSYNC[@]}" "/home/fede/docs/" "$BKP_01_01/docs/"
+"${RSYNC[@]}" "/home/fede/docs/" "$BKP_01_01_DATA/docs/"
 
 echo "## Archive backup"
-"${RSYNC[@]}" "$ARCHIVE/" "$BKP_01_01/archive/"
+"${RSYNC[@]}" "$ARCHIVE/" "$BKP_01_01_DATA/archive/"
 
 ############
 # SNAPSHOT #
 ############
 echo "# Creating snapshot"
-SNAPSHOT_DIR="$BKP_01_01/.snapshots/$DATE"
+SNAPSHOT_DIR="$BKP_01_01_SNAPSHOTS/$DATE"
 if [[ "$DRY_RUN" != "true" ]]; then
-    btrfs subvolume snapshot -r "$BKP_01_01" "$SNAPSHOT_DIR"
+    btrfs subvolume snapshot -r "$BKP_01_01_DATA" "$SNAPSHOT_DIR"
     echo "Snapshot created: $SNAPSHOT_DIR"
 fi
 
@@ -73,7 +75,7 @@ fi
 # PRUNE OLD SNAPSHOTS #
 #######################
 echo "# Checking snapshots older than $MAX_SNAPHOT_AGE days"
-find "$BKP_01_01/.snapshots" \
+find "$BKP_01_01_SNAPSHOTS" \
     -mindepth 1 -maxdepth 1 \
     -type d \
     -mtime +$MAX_SNAPHOT_AGE \
@@ -84,7 +86,9 @@ find "$BKP_01_01/.snapshots" \
 ################
 echo "# Scrubing"
 echo "## Scrubbing backup disk"
-btrfs scrub start -B "$BKP_01_01"
+btrfs scrub start -B "$BKP_01_01_DATA"
+echo "## Scrubbing archive disk"
+btrfs scrub start -B "$ARCHIVE"
 echo "## Scrubbing system disk"
 btrfs scrub start -B /
 

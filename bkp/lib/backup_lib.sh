@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 
-SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
-
 setup_rsync() {
-    RSYNC=(rsync -aAXHv --info=progress2,stats --delete --numeric-ids --exclude='lost+found/' --exclude='.git/index' --exclude='.git/*/index')
+    RSYNC=(rsync -aAXHv --info=progress2,stats --delete --numeric-ids --exclude='lost+found/')
     if [[ "${DRY_RUN:-false}" == "true" ]]; then
         echo "DRY RUN MODE (no changes will be made)"
         RSYNC+=(--dry-run)
