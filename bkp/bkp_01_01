@@ -5,7 +5,7 @@ set -ueo pipefail
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 source "$SCRIPT_DIR/lib/backup_lib.sh"
 
-MAX_SNAPHOT_AGE=100
+MAX_SNAPSHOT_AGE=100
 DRY_RUN="${DRY_RUN:-false}"
 
 DATE="$(date +%F_%H-%M-%S)"
@@ -24,8 +24,8 @@ setup_logging "bkp_01_01" "$DATE"
 # Mount points #
 ################
 BKP_01_01="/mnt/bkp_01_01"
-BKP_01_01_DATA="$BKP_01_01/@/"
-BKP_01_01_SNAPSHOTS="$BKP_01_01/@.snapshots/"
+BKP_01_01_DATA="$BKP_01_01/@"
+BKP_01_01_SNAPSHOTS="$BKP_01_01/@.snapshots"
 ARCHIVE="/run/media/fede/archive"
 
 ###########
@@ -51,7 +51,7 @@ ssh -o BatchMode=yes -o ConnectTimeout=5 "$BATOCERA_REMOTE" "true" >/dev/null 2>
 ##############
 # Rsync pull #
 ##############
-mkdir -p $BKP_01_01_DATA/batocera
+mkdir -p "$BKP_01_01_DATA/batocera"
 echo "## Batocera backup"
 "${RSYNC[@]}" "$BATOCERA_REMOTE:/userdata/" "$BKP_01_01_DATA/batocera/userdata/"
 
@@ -65,28 +65,25 @@ echo "## Archive backup"
 # SNAPSHOT #
 ############
 echo "# Creating snapshot"
-SNAPSHOT_DIR="$BKP_01_01_SNAPSHOTS/$DATE"
-if [[ "$DRY_RUN" != "true" ]]; then
-    btrfs subvolume snapshot -r "$BKP_01_01_DATA" "$SNAPSHOT_DIR"
-    echo "Snapshot created: $SNAPSHOT_DIR"
-fi
+create_snapshot \
+    "$BKP_01_01_DATA" \
+    "$BKP_01_01_SNAPSHOTS" \
+    "$DATE"
 
 #######################
 # PRUNE OLD SNAPSHOTS #
 #######################
-echo "# Checking snapshots older than $MAX_SNAPHOT_AGE days"
-find "$BKP_01_01_SNAPSHOTS" \
-    -mindepth 1 -maxdepth 1 \
-    -type d \
-    -mtime +$MAX_SNAPHOT_AGE \
-    -exec echo "Consider deleting old snapshot {} by running: btrfs subvolume delete \"{}\"" \;
+echo "# Checking snapshots older than $MAX_SNAPSHOT_AGE days"
+check_snapshot_age \
+    "$BKP_01_01_SNAPSHOTS" \
+    "$MAX_SNAPSHOT_AGE"
 
 ################
 # Scrub        #
 ################
 echo "# Scrubing"
 echo "## Scrubbing backup disk"
-btrfs scrub start -B "$BKP_01_01_DATA"
+btrfs scrub start -B "$BKP_01_01"
 echo "## Scrubbing archive disk"
 btrfs scrub start -B "$ARCHIVE"
 echo "## Scrubbing system disk"

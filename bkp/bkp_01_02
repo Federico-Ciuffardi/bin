@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 
-set -uo pipefail
+set -ueo pipefail
 
 source "$(dirname "$(readlink -f "$0")")/lib/backup_lib.sh"
 
 DATE="$(date +%F_%H-%M-%S)"
 
 DRY_RUN="${DRY_RUN:-false}"
+MAX_SNAPSHOT_AGE=100
 
 if [[ $EUID -ne 0 ]]; then
     echo "Run with sudo..."
@@ -25,7 +26,7 @@ BKP_01_01="/mnt/bkp_01_01"
 BKP_01_01_DATA="$BKP_01_01/@"
 BKP_01_02="/run/media/fede/bkp_01_02"
 BKP_01_02_DATA="$BKP_01_02/@"
-BKP_01_02_SNAPSHOT="$BKP_01_02/@.snapshots/"
+BKP_01_02_SNAPSHOTS="$BKP_01_02/@.snapshots"
 
 #############
 # Rsync cmd #
@@ -49,22 +50,29 @@ echo "# Mirroring bkp_01_01 to bkp_01_02"
 # SNAPSHOT #
 ############
 echo "# Creating snapshot"
-SNAPSHOT_DIR="$BKP_01_02_SNAPSHOT/$DATE"
-if [[ "$DRY_RUN" != "true" ]]; then
-    btrfs subvolume snapshot -r "$BKP_01_02_DATA/@" "$SNAPSHOT_DIR"
-    echo "Snapshot created: $SNAPSHOT_DIR"
-fi
+create_snapshot \
+    "$BKP_01_02_DATA" \
+    "$BKP_01_02_SNAPSHOTS" \
+    "$DATE"
+
+#######################
+# PRUNE OLD SNAPSHOTS #
+#######################
+echo "# Checking snapshots older than $MAX_SNAPSHOT_AGE days"
+check_snapshot_age \
+    "$BKP_01_02_SNAPSHOTS" \
+    "$MAX_SNAPSHOT_AGE"
 
 ##########
 # Scrub  #
 ##########
 echo "# Scrubbing mirror disk"
-btrfs scrub start -B "$BKP_01_02_DATA"
+btrfs scrub start -B "$BKP_01_02"
 
 ################
 # Disk health  #
 ################
 echo "# Checking disk health"
-check_disks_health || true
+$SCRIPT_DIR/check_disks_health || true
 
 echo "Mirror completed: $DATE"
