@@ -18,7 +18,7 @@ password_files=( "${password_files[@]#"$prefix"/}" )
 password_files=( "${password_files[@]%.gpg}" )
 
 # choose password file
-password_file=$(printf '%s\n' "${password_files[@]}" | grep '/' | dmenu -p pass "$@")
+password_file=$(printf '%s\n' "${password_files[@]}" | grep '/' | rofi -dmenu -p pass "$@")
 [ $? -ne 0 ] && exit 1
 
 
@@ -32,7 +32,7 @@ else
   user="${password_file#*/}"
   site="${password_file%/*}"
 
-  mode=$(printf 'autofill\nuser\npassword' | dmenu -p pass "$@")
+  mode=$(printf 'autofill\nuser\npassword' | rofi -dmenu -p pass "$@")
   [ $? -ne 0 ] && exit 1
 
   # type user

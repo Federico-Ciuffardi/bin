@@ -12,8 +12,11 @@ Arch)
   nitrogen --set-tiled $WALLPAPER_FILE
   ;;
 Ubuntu)
-  xrandr --output eDP-1-1 --mode 1680x1050 --rotate inverted --output DP-1-2-1 --mode 1920x1080 --rotate inverted --right-of eDP-1-1 --output DP-1-2-3 --mode 1920x1080 --rotate inverted --right-of DP-1-2-1
-  xrandr --output eDP-1-1 --mode 1680x1050 --rotate normal --output DP-1-2-1 --mode 1920x1080 --rotate normal --right-of eDP-1-1 --output DP-1-2-3 --mode 1920x1080 --rotate normal --right-of DP-1-2-1
+  DISPLAY_0=eDP
+  DISPLAY_1=DisplayPort-1
+  DISPLAY_2=DisplayPort-2
+  xrandr --output $DISPLAY_0 --mode 1920x1080 --rotate inverted --output $DISPLAY_1 --mode 1920x1080 --rotate inverted --right-of $DISPLAY_0 --output $DISPLAY_2 --mode 1920x1080 --rotate inverted --right-of $DISPLAY_1
+  xrandr --output $DISPLAY_0 --mode 1920x1080 --rotate normal --output $DISPLAY_1 --mode 1920x1080 --rotate normal --right-of $DISPLAY_0 --output $DISPLAY_2 --mode 1920x1080 --rotate normal --right-of $DISPLAY_1
   nitrogen --set-tiled --head=0 $WALLPAPER_FILE
   nitrogen --set-tiled --head=1 $WALLPAPER_FILE
   nitrogen --set-tiled --head=2 $WALLPAPER_FILE
