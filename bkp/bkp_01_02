@@ -2,7 +2,8 @@
 
 set -ueo pipefail
 
-source "$(dirname "$(readlink -f "$0")")/lib/backup_lib.sh"
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+source "$SCRIPT_DIR/lib/backup_lib.sh"
 
 DATE="$(date +%F_%H-%M-%S)"
 

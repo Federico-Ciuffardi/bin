@@ -61,10 +61,14 @@ if [ -z "$filesToAge" ]; then
 fi
 
 # ---- compute next age ----
+
+escaped_prefix=$(printf '%s\n' "$prefix" | sed -E 's/[][(){}.^$*+?|\\]/\\&/g')
+
 currentAge=$(
-  ls | grep "^${prefix}" |
-    grep -E "^${prefix#\.}[0-9]+" |
-    sed -E "s/^${prefix#\.}0*//" |
+  ls -a |
+    grep "^${escaped_prefix}" |
+    grep -E "^${escaped_prefix}[0-9]+" |
+    sed -E "s/^${escaped_prefix}0*//" |
     sort -n |
     tail -1 || true
 )

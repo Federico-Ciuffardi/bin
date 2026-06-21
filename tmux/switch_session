@@ -4,7 +4,7 @@
 CURRENT_SESSION_ID="$1"
 
 if [ `tmux list-sessions | wc -l` -gt 1 ] ; then
-  tmux choose-tree -ws -O time -f "#{!=:#{session_id},$CURRENT_SESSION_ID}" "attach-session -d -t '%%'"
+  tmux choose-tree -ws -f "#{!=:#{session_id},$CURRENT_SESSION_ID}" "attach-session -d -t '%%'"
 else
   tmux display-message "No other session"
 fi

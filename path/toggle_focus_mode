@@ -1,16 +1,19 @@
 #!/bin/sh
 
-OUTPUT="HDMI-0"
+OUTPUT_1="eDP-1"
+OUTPUT_2="DP-2-3"
 
-current=$(xrandr --verbose | awk -v out="$OUTPUT" '
+current=$(xrandr --verbose | awk -v out="$OUTPUT_1" '
   $1 == out {p=1}
   p && /Brightness:/ {print $2; exit}
 ')
 
 if [ "$current" = "0.0" ] || [ "$current" = "0" ]; then
     # Turn it back on
-    xrandr --output "$OUTPUT" --brightness 1
+    xrandr --output "$OUTPUT_1" --brightness 1
+    xrandr --output "$OUTPUT_2" --brightness 1
 else
     # Turn it off (black)
-    xrandr --output "$OUTPUT" --brightness 0
+    xrandr --output "$OUTPUT_1" --brightness 0
+    xrandr --output "$OUTPUT_2" --brightness 0
 fi
