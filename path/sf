@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # [s]elect [f]file
-fd --hidden --follow -d ${1:-99} -E ".git" -E "Trash" -E ".cache" "." | fzf +m --height=100%
+fd --hidden --no-ignore --follow -d ${1:-99} -E ".git" -E "Trash" -E ".cache" "." | fzf +m --height=100%
 # find -L . -maxdepth ${1:-10} \
 #      -path '*/' -o\
 #      -fstype 'sysfs' -o\
